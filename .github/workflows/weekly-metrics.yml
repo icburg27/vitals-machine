@@ -1,0 +1,32 @@
+name: weekly-metrics
+on:
+  schedule:
+    - cron: '0 13 * * 6'      # Saturdays 13:00 UTC
+  workflow_dispatch: {}
+permissions:
+  contents: write
+  issues: write
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install pandas numpy scipy scikit-learn pyyaml
+      - run: python src/metrics.py
+      - id: trip
+        run: python src/tripwires.py || echo "fired=true" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+      - name: commit
+        run: |
+          git config user.name "vitals-machine"
+          git config user.email "machine@users.noreply.github.com"
+          git add data/ && git diff --cached --quiet || git commit -m "metrics $(date -u +%F)"
+          git push
+      - name: alert issue
+        if: steps.trip.outputs.fired == 'true'
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          gh issue create --title "TRIPWIRE FIRED - $(date -u +%F)" \
+            --body "$(cat data/alerts.json)" --label tripwire || true
