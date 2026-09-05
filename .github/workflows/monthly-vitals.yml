@@ -1,0 +1,43 @@
+name: monthly-vitals
+on:
+  schedule:
+    - cron: '0 14 * * 6'      # Saturdays 14:00 UTC; script gates on last-Saturday
+  workflow_dispatch: {}
+permissions:
+  contents: write
+  issues: write
+jobs:
+  reading:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install pandas numpy scipy scikit-learn pyyaml matplotlib yfinance
+      - name: gate on last Saturday (skip otherwise)
+        id: gate
+        run: |
+          python - <<'PY'
+          import datetime as dt, sys, os
+          sys.path.insert(0,'src')
+          from common import last_saturday
+          today = dt.date.today()
+          open(os.environ['GITHUB_OUTPUT'],'a').write(f"run={'true' if today==last_saturday(today) else 'false'}\n")
+          PY
+      - if: steps.gate.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          python src/harvest.py
+          python src/metrics.py
+          python src/tripwires.py || true
+          python src/grade.py
+          python src/render.py
+      - if: steps.gate.outputs.run == 'true' || github.event_name == 'workflow_dispatch'
+        name: commit + issue
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          git config user.name "vitals-machine"
+          git config user.email "machine@users.noreply.github.com"
+          git add -A && git diff --cached --quiet || git commit -m "monthly reading $(date -u +%F)"
+          git push
+          gh issue create --title "Vitals Reading $(date -u +%Y-%m) - awaiting CEO verdict" \
+            --body "Draft report in reports/. Review, write the verdict, publish. Autonomy clock: log founder-minutes on this issue." || true
