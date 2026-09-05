@@ -1,0 +1,16 @@
+# The observed universe. Edit here; the machine follows.
+core20:   # the basket — all vitals metrics computed on these
+  Tech:       [AAPL, AMD, NVDA]
+  Financial:  [BAC, JPM]
+  Consumer:   [BBY, HD, WMT, KO, PEP]
+  Energy:     [CVX, XOM, COP]
+  Industrial: [GE, MMM]
+  Health:     [JNJ, LLY, UNH, BMY, ABT]
+pocket: [NVDA, AMD]          # the AI growth-tip seed for frontier scoring
+frontier_watch: [TSM, VRT, AVGO, ETN, SMCI, ANET, VST, CEG]
+context: [TFC, USB, WFC]     # tracked for the CCRO/artery storyline
+pair:                        # the 356.69 natural experiment
+  a: AVGO
+  b: JPM
+  entry_date: '2026-08-25'
+  entry_price: 356.69
