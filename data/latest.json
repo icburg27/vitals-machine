@@ -1,0 +1,21 @@
+{
+  "asof": "2026-09-03",
+  "eff_dim": 8.79,
+  "mean_corr": 0.067,
+  "separation": 1.258,
+  "vorticity": 0.836,
+  "vix": 14.53,
+  "pair_ratio": 0.9979,
+  "frontier_scores": {
+    "TSM": 0.885,
+    "VRT": 0.834,
+    "AVGO": 0.728,
+    "ETN": 0.718,
+    "SMCI": 0.568,
+    "ANET": 0.698,
+    "VST": 0.54,
+    "CEG": 0.536,
+    "NVDA": 0.66,
+    "AMD": 0.626
+  }
+}
