@@ -1,0 +1,46 @@
+name: publish-reading
+# The CEO's verdict is the only thing that publishes. Comment `VERDICT: ...` on a `reading` issue.
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: write
+  issues: write
+jobs:
+  publish:
+    if: >
+      contains(github.event.issue.labels.*.name, 'reading') &&
+      startsWith(github.event.comment.body, 'VERDICT') &&
+      (github.event.comment.author_association == 'OWNER' || github.event.comment.user.login == github.repository_owner)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install pyyaml
+      - id: pub
+        env:
+          BUTTONDOWN_API_KEY: ${{ secrets.BUTTONDOWN_API_KEY }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          COMMENT: ${{ github.event.comment.body }}
+        run: |
+          python src/publish.py --issue-body "$ISSUE_BODY" --comment "$COMMENT" \
+            --author "${{ github.event.comment.user.login }}" --issue-number "${{ github.event.issue.number }}" | tee /tmp/pub.json
+      - name: commit final letter
+        run: |
+          git config user.name "vitals-machine"; git config user.email "machine@users.noreply.github.com"
+          git add letters/ && git diff --cached --quiet || git commit -m "publish reading $(date -u +%F) (verdict by ${{ github.event.comment.user.login }})"
+          git push
+      - name: report back and close
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          SENT=$(python -c "import json;d=json.load(open('/tmp/pub.json'));print(json.dumps(d.get('sent')))")
+          gh issue comment ${{ github.event.issue.number }} --body "Published. letters/final updated; site rebuilds within 30 minutes. Buttondown: \`$SENT\`"
+          gh issue close ${{ github.event.issue.number }} --reason completed
+      - name: nudge the site to rebuild now (optional; needs SITE_DISPATCH_TOKEN)
+        env: { SITE_DISPATCH_TOKEN: '${{ secrets.SITE_DISPATCH_TOKEN }}' }
+        run: |
+          [ -z "$SITE_DISPATCH_TOKEN" ] && { echo "no SITE_DISPATCH_TOKEN; site picks the letter up on its Saturday schedule"; exit 0; }
+          curl -s -X POST -H "Authorization: Bearer $SITE_DISPATCH_TOKEN" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/icburg27/market-dimensions/dispatches -d '{"event_type":"reading-published"}'

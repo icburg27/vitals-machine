@@ -1,0 +1,41 @@
+name: weekly-letter
+# Drafts The Reading every Saturday after the metrics train (13:00) and the monthly gate (14:00).
+# The draft is opened as an issue labeled `reading`. The CEO publishes it by commenting VERDICT: ...
+on:
+  schedule:
+    - cron: '30 14 * * 6'     # Saturdays 14:30 UTC
+  workflow_dispatch:
+    inputs:
+      kind: { description: 'auto | weekly | monthly', default: 'auto' }
+permissions:
+  contents: write
+  issues: write
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: git pull --rebase
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install pandas numpy scipy scikit-learn pyyaml matplotlib
+      - id: draft
+        run: |
+          python src/letter.py --kind "${{ github.event.inputs.kind || 'auto' }}" | tail -1 > /tmp/meta.json
+          echo "title=$(python -c "import json;print(json.load(open('/tmp/meta.json'))['title'])")" >> "$GITHUB_OUTPUT"
+          echo "draft=$(python -c "import json;print(json.load(open('/tmp/meta.json'))['draft'])")" >> "$GITHUB_OUTPUT"
+      - name: commit draft
+        run: |
+          git config user.name "vitals-machine"; git config user.email "machine@users.noreply.github.com"
+          git add letters/ && git diff --cached --quiet || git commit -m "letter draft $(date -u +%F)"
+          git push
+      - name: open verdict issue
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          gh label create reading --color 7c5cff --description "A Reading awaiting the CEO's verdict" 2>/dev/null || true
+          { echo "<!-- draft: ${{ steps.draft.outputs.draft }} -->"
+            echo "**Draft ready.** Reply on this issue with a comment that begins \`VERDICT:\` and the letter publishes — to letters/final/, to the site, and (if the Buttondown key is set) to subscribers. Close without a verdict to skip this week."
+            echo; echo "---"; echo
+            cat "${{ steps.draft.outputs.draft }}"; } > /tmp/body.md
+          gh issue create --title "${{ steps.draft.outputs.title }} — awaiting verdict" --label reading --body-file /tmp/body.md
