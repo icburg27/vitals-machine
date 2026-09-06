@@ -45,3 +45,20 @@
   claim: In any clench (eff_dim < 4), the AVGO/JPM ratio falls (plumbing outperforms frontier in panic)
   due: conditional
   grader: machine
+# --- Process claims (registered 2026-09-06). Analyses the Field Guide ("What could be wrong with this")
+# --- promised in public. Graded on delivery: correct = published in reports/ by the due date, with method and data.
+- id: PROC-1
+  registered: '2026-09-06'
+  claim: Publish bootstrap confidence bands (block bootstrap on the 60-day window) for effective dimension, and add them to the Observatory history chart
+  due: '2026-10-31'
+  grader: CEO
+- id: PROC-2
+  registered: '2026-09-06'
+  claim: Publish the T2 disease-signature hit/false-alarm table across every drawdown in the research panel (2000-02, 2007-09, 2011, 2015-16, 2018, 2020, 2022) with the rule frozen as deployed
+  due: '2026-11-28'
+  grader: CEO
+- id: PROC-3
+  registered: '2026-09-06'
+  claim: Publish a shuffled-returns null distribution for vorticity and restate T1 (0.92) against it, or retire T1 if it is not distinguishable from noise
+  due: '2026-12-26'
+  grader: CEO
