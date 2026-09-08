@@ -48,6 +48,26 @@ def movers(rets, core, n=3):
     rows.sort(key=lambda r: r[3])
     return rows[-n:][::-1], rows[:n]
 
+def frontier(lr, core, watch):
+    pocket = ["NVDA", "AMD"]; pm = lr[pocket].mean(axis=1); out = {}
+    for t in watch + pocket:
+        if t not in lr: continue
+        cp = lr[t].corr(lr[[p for p in pocket if p != t][0]]) if t in pocket else lr[t].corr(pm)
+        cb = np.mean([lr[t].corr(lr[b]) for b in core if b != t and b in lr]); out[t] = float(cp - cb)
+    return out
+
+def feeding(panel_all, core):
+    watch = ["TSM", "VRT", "AVGO", "ETN", "SMCI", "ANET", "VST", "CEG"]
+    px = panel_all.ffill(limit=3); lr = np.log(px / px.shift(1))
+    now = frontier(lr.iloc[-60:], core, watch); prev = frontier(lr.iloc[-65:-5], core, watch)
+    last, d5, d20 = px.iloc[-1], px.iloc[-6], px.iloc[-21]
+    body4 = float(((last[core] / d20[core]) - 1).mean() * 100)
+    rows = []
+    for t, sc in sorted(now.items(), key=lambda x: -x[1]):
+        rows.append(dict(t=t, s=sc, ds=sc - prev.get(t, sc), r1=float(last[t] / d5[t] - 1) * 100, r4=float(last[t] / d20[t] - 1) * 100))
+    fe = [r for r in rows if r["ds"] > 0 and r["r4"] > body4]; die = [r for r in rows if r["r4"] < body4 - 2 and r["ds"] < 0]
+    return rows, fe, die, body4
+
 def arms_table(panel):
     if pd.Timestamp(ENTRY) not in panel.index: return "_entry row not in panel_"
     e, l = panel.loc[ENTRY], panel.iloc[-1]; out = ["| Arm | Names | Paper return since 8/25 |", "|---|---|---|"]
@@ -109,6 +129,13 @@ def main():
     dim, ddim = float(cur.eff_dim), float(cur.eff_dim - week_ago.eff_dim)
     vix = latest.get("vix"); vort = latest.get("vorticity")
     tight, loose = movers(rets, core)
+    frows, fe, die, body4 = feeding(load_panel(), core)
+    e_ok = pd.Timestamp(ENTRY) in panel.index
+    def arm_ret(names):
+        have = [t for t in names if t in panel.columns and e_ok and pd.notna(panel.loc[ENTRY].get(t))]
+        return float(((panel.iloc[-1][have] / panel.loc[ENTRY][have]) - 1).mean() * 100) if have else float("nan")
+    surprise = [t for t in ARMS["Pruned"] if e_ok and arm_ret([t]) > arm_ret(ARMS["Feeding ground"])]
+    fmt = lambda r: f"**{r['t']}** — score {r['s']:.2f} ({r['ds']:+.2f} on the week), {r['r4']:+.1f}% over four weeks"
     npred, ngraded, soon = ledger_summary(today)
     t2_n = len(M); t2_arm = "armed" if t2_n >= 40 else f"arming — {t2_n}/40 readings of history; cannot fire before ~late Oct 2026"
     os.makedirs(os.path.join(ROOT, "letters", "drafts"), exist_ok=True)
@@ -117,7 +144,14 @@ def main():
     title = f"The Reading — {today.strftime('%B %-d, %Y')}" + (" — the monthly physical" if kind == "monthly" else "")
     lines = [f"# {title}", "",
              f"*Data through {latest['asof']}. Conditions: **{weather(vix)}** (VIX {vix}). Paper experiment; research and education, not investment advice.*", "",
-             "## In one breath", "",
+             "## Where it fed this week", "",
+             f"The pocket is still NVDA and AMD. The tissue closest to it: " + ", ".join(f"{r['t']} ({r['s']:.2f})" for r in frows[:4]) + f". The body (core-20) moved {body4:+.1f}% over four weeks.", "",
+             "**Feeding now** — score rising and outrunning the body:", "", *([f"- {fmt(r)}" for r in fe] or ["- nothing qualifies this week"]), "",
+             "**Dieback** — falling score, price sagging as if the food ran out:", "", *([f"- {fmt(r)}" for r in die] or ["- none"]), "",
+             "**More food than we thought** — pruned names beating the feeding arm since entry:", "",
+             *([f"- **{t}** — {arm_ret([t]):+.1f}% since {ENTRY} vs feeding arm {arm_ret(ARMS['Feeding ground']):+.1f}%" for t in surprise] or ["- none"]), "",
+             "_Why is that little pocket of food hitting like it is? (CEO answers in the verdict.)_", "",
+             "## The body, in one breath", "",
              f"Effective dimension **{dim:.2f}** ({ddim:+.2f} on the week) — {read_dim(dim)}. Mean correlation {latest['mean_corr']:.3f}; separation {latest['separation']:.3f}; vorticity {vort if vort is not None else '—'} ({'migration still underway' if vort is not None and vort < 0.92 else 'migration complete / rotation' if vort is not None else 'not computed'}).", "",
              f"![The constellation, data through {latest['asof']}]({RAW}letters/drafts/{stem}.png)", "",
              "## Movers — who drifted toward whom", "",
@@ -125,8 +159,7 @@ def main():
              *[f"- **{a}–{b}** tightened: ρ {r:.2f} ({d:+.2f})" for a, b, r, d in tight],
              *[f"- **{a}–{b}** loosened: ρ {r:.2f} ({d:+.2f})" for a, b, r, d in loose], "",
              "## Tripwires", "",
-             *( [f"- ⚠ {x}" for x in alerts.get("alerts", [])] or ["- None fired."] ),
-             f"- T1 vorticity > 0.92: armed (now {vort}).", f"- T2 disease signature: {t2_arm}.", f"- T3 fusion: armed (separation {latest['separation']:.2f}).",
+             *( [f"- ⚠ {x}" for x in alerts.get("alerts", [])] or ["- None fired. (T1 vorticity, T2 disease signature, T3 fusion — all armed; T2 " + t2_arm + ".)"] ),
              *[f"- note: {x}" for x in alerts.get("notes", [])], "",
              "## The paper experiment", "", "**Pretend dollars, no real positions.** Since entry on 2026-08-25:", "", arms_table(panel), "",
              f"356.69 pair (AVGO/JPM): **{latest['pair_ratio']:.4f}** ({(latest['pair_ratio'] - 1) * 100:+.2f}% vs parity) — PAIR-1 says it rises in sunlight.", "",
@@ -139,7 +172,7 @@ def main():
                   "Frontier scores (correlation to the AI pocket minus correlation to the body):", "",
                   *[f"- {t}: {s}" for t, s in sorted(latest.get("frontier_scores", {}).items(), key=lambda x: -x[1])], "",
                   (open(rp).read().split("## VERDICT")[0] if os.path.exists(rp) else "_monthly report not found in reports/_"), ""]
-    lines += ["## VERDICT", "", "_The CEO writes this. Reply on the issue with a comment beginning `VERDICT:` and the letter publishes with that text here._", "",
+    lines += ["## VERDICT", "", "_The CEO writes this — the story of the week in the slime mold's terms: why the food is where it is. Reply on the issue with a comment beginning `VERDICT:` and the letter publishes with that text here._", "",
               "---", "", f"*Market Dimensions is research and education, not investment advice. The portfolio above is a paper experiment. Operated under the AI Formation Governance Standard by The AI Governance Company — self-governed in public, not third-party certified.* [Unsubscribe]({{{{ unsubscribe_url }}}})", ""]
     open(md_path, "w").write("\n".join(lines))
     meta = dict(kind=kind, date=stem, title=title, draft=f"letters/drafts/{stem}.md", png=f"letters/drafts/{stem}.png", asof=latest["asof"])
