@@ -55,7 +55,9 @@ def main():
   print("panel too short; run backfill"); return 1
  rets = np.log(panel[core]/panel[core].shift(1)).dropna()
  rows = []
- for e in range(WIN, len(rets), STEP):
+ ends = list(range(WIN, len(rets), STEP))
+ if ends and ends[-1] != len(rets): ends.append(len(rets))
+ for e in ends:
   C = rets.iloc[e-WIN:e].corr().values
   D = np.sqrt(np.maximum(2*(1-C), 0))
   rows.append(dict(date=rets.index[e-1],
