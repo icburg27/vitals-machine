@@ -1,5 +1,9 @@
 {
-  "asof": "2026-10-30",
-  "alerts": [],
-  "notes": []
+  "asof": "2026-11-06",
+  "alerts": [
+    "T1 vorticity 0.943 > 0.92 - migration complete; river dissolving into rotation"
+  ],
+  "notes": [
+    "356.69 pair ratio at 0.869 (moved >10% from parity)"
+  ]
 }

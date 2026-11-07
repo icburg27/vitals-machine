@@ -1,21 +1,21 @@
 {
-  "asof": "2026-10-30",
-  "eff_dim": 7.89,
-  "mean_corr": 0.073,
-  "separation": 1.277,
-  "vorticity": 0.916,
+  "asof": "2026-11-06",
+  "eff_dim": 6.93,
+  "mean_corr": 0.097,
+  "separation": 1.335,
+  "vorticity": 0.943,
   "vix": 14.21,
-  "pair_ratio": 0.9575,
+  "pair_ratio": 0.8688,
   "frontier_scores": {
-    "TSM": 0.991,
-    "VRT": 0.702,
+    "TSM": 0.978,
+    "VRT": 0.762,
     "AVGO": 0.717,
-    "ETN": 0.887,
-    "SMCI": 0.74,
-    "ANET": 0.839,
-    "VST": 0.6,
-    "CEG": 0.51,
-    "NVDA": 0.752,
-    "AMD": 0.727
+    "ETN": 0.886,
+    "SMCI": 0.854,
+    "ANET": 0.778,
+    "VST": 0.662,
+    "CEG": 0.571,
+    "NVDA": 0.794,
+    "AMD": 0.781
   }
 }
