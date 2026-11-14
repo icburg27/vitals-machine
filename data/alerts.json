@@ -1,9 +1,8 @@
 {
-  "asof": "2026-11-06",
+  "asof": "2026-11-13",
   "alerts": [
-    "T1 vorticity 0.943 > 0.92 - migration complete; river dissolving into rotation"
+    "T1 vorticity 0.986 > 0.92 - migration complete; river dissolving into rotation",
+    "T2 DISEASE SIGNATURE: eff_dim < 75% of trailing max for 3 consecutive readings (now 6.9) - the 2007 pattern"
   ],
-  "notes": [
-    "356.69 pair ratio at 0.869 (moved >10% from parity)"
-  ]
+  "notes": []
 }
